@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="shieldGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6" />
+      <stop offset="50%" stop-color="#7C3AED" />
+      <stop offset="100%" stop-color="#5B21B6" />
+    </linearGradient>
+
+    <linearGradient id="boltGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFE066" />
+      <stop offset="50%" stop-color="#FCD34D" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+
+    <filter id="logoShadow512" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#5B21B6" flood-opacity="0.35" />
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.15" />
+    </filter>
+  </defs>
+
+  <g filter="url(#logoShadow512)">
+    <path d="M256 48 C150 48 64 134 64 240 C64 330 146 414 242 460 C250 464 262 464 270 460 C366 414 448 330 448 240 C448 134 362 48 256 48 Z"
+          fill="url(#shieldGrad512)"
+          stroke="#1E1B4B"
+          stroke-width="12"
+          stroke-linejoin="round" />
+
+    <path d="M256 68 C164 68 88 144 88 240 C88 318 160 394 248 436 C253 438 259 438 264 436 C352 394 424 318 424 240 C424 144 348 68 256 68 Z"
+          fill="none"
+          stroke="#C4B5FD"
+          stroke-width="6"
+          stroke-opacity="0.4" />
+
+    <polygon points="276,120 180,260 248,260 228,380 340,230 272,230"
+             fill="url(#boltGrad512)"
+             stroke="#78350F"
+             stroke-width="8"
+             stroke-linejoin="round" />
+  </g>
+</svg>

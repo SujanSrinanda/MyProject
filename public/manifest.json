@@ -1,0 +1,64 @@
+{
+  "name": "SentinelFin - Personal Financial Safety Layer",
+  "short_name": "SentinelFin",
+  "description": "Personal financial safety layer ensuring safe payments with intelligent threat detection.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "window-controls-overlay", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#FAF7F2",
+  "theme_color": "#7C3AED",
+  "lang": "en-US",
+  "dir": "ltr",
+  "categories": ["finance", "security", "utilities", "productivity"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Quick Pay",
+      "short_name": "Pay",
+      "description": "Initiate a verified zero-trust payment",
+      "url": "/pay",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Safety Center",
+      "short_name": "Safety",
+      "description": "Inspect perimeter defenses and active security score",
+      "url": "/safety",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Payment Activity",
+      "short_name": "Activity",
+      "description": "View verified transaction audit ledger",
+      "url": "/activity",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}
