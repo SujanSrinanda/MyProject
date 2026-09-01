@@ -1,0 +1,12 @@
+[
+  "backend/tests/test_backend.py::TestSentinelFinBackend::test_auth_and_user_flows",
+  "backend/tests/test_backend.py::TestSentinelFinBackend::test_demo_logins",
+  "backend/tests/test_backend.py::TestSentinelFinBackend::test_health_and_migrations",
+  "backend/tests/test_backend.py::TestSentinelFinBackend::test_pbkdf2_compatibility",
+  "backend/tests/test_backend.py::TestSentinelFinBackend::test_session_token",
+  "backend/tests/test_backend.py::test_auth_and_user_flows",
+  "backend/tests/test_backend.py::test_demo_logins",
+  "backend/tests/test_backend.py::test_health_and_migrations",
+  "backend/tests/test_backend.py::test_pbkdf2_compatibility",
+  "backend/tests/test_backend.py::test_session_token"
+]

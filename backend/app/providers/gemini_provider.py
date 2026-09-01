@@ -62,7 +62,7 @@ Respond ONLY with raw JSON matching this structure:
 }}"""
 
         try:
-            model_name = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+            model_name = os.environ.get("GEMINI_MODEL", "gemini-3.7-flash")
             response = client.models.generate_content(
                 model=model_name,
                 contents=prompt

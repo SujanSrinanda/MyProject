@@ -227,6 +227,7 @@ class AuthService:
                 "emailVerified": new_user["emailVerified"],
                 "phoneVerified": new_user["phoneVerified"],
                 "onboardingCompleted": new_user["onboardingCompleted"],
+                "balance": float(new_user.get("balance", 45000.0)),
             }
         }
 
@@ -356,11 +357,16 @@ class AuthService:
                 "emailVerified": user["emailVerified"],
                 "phoneVerified": user["phoneVerified"],
                 "onboardingCompleted": user["onboardingCompleted"],
+                "city": user.get("city"),
+                "profilePhoto": user.get("profilePhoto"),
+                "balance": float(user.get("balance", 45000.0)),
             }
         }
 
     async def get_me(self, user: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         user_id = user["id"]
+        # Fetch fresh user record from database to get latest balance
+        fresh_user = self.user_repo.find_by_id(user_id) or user
         fin_profile = self.user_repo.get_financial_profile(user_id)
         sec_profile = self.user_repo.get_security_profile(user_id)
         budget = self.budget_repo.find_by_user_id(user_id)
@@ -368,15 +374,16 @@ class AuthService:
         return 200, {
             "success": True,
             "user": {
-                "id": user["id"],
-                "fullName": user["fullName"],
-                "email": user["email"],
-                "phone": user["phone"],
-                "emailVerified": user["emailVerified"],
-                "phoneVerified": user["phoneVerified"],
-                "onboardingCompleted": user["onboardingCompleted"],
-                "city": user.get("city"),
-                "profilePhoto": user.get("profilePhoto"),
+                "id": fresh_user["id"],
+                "fullName": fresh_user["fullName"],
+                "email": fresh_user["email"],
+                "phone": fresh_user["phone"],
+                "emailVerified": fresh_user["emailVerified"],
+                "phoneVerified": fresh_user["phoneVerified"],
+                "onboardingCompleted": fresh_user["onboardingCompleted"],
+                "city": fresh_user.get("city"),
+                "profilePhoto": fresh_user.get("profilePhoto"),
+                "balance": float(fresh_user.get("balance", 45000.0)),
             },
             "financialProfile": fin_profile or None,
             "securityProfile": sec_profile or None,
