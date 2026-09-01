@@ -1,11 +1,11 @@
 import sqlite3
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple, List
 from datetime import datetime
 from backend.app.db.database import db_manager
 
 def map_row_to_user(row: sqlite3.Row) -> Dict[str, Any]:
     row_keys = row.keys() if hasattr(row, 'keys') else []
-    balance_val = float(row["balance"]) if "balance" in row_keys and row["balance"] is not None else 45000.0
+    balance_val = float(row["balance"]) if "balance" in row_keys and row["balance"] is not None else 0.0
     return {
         "id": str(row["id"]),
         "fullName": str(row["full_name"]),
@@ -176,7 +176,7 @@ class UserRepository:
         user = self.find_by_id(user_id)
         if not user:
             return 0.0
-        current_bal = float(user.get("balance", 45000.0))
+        current_bal = float(user.get("balance", 0.0))
         new_bal = max(0.0, current_bal + delta_amount)
         db_manager.execute("UPDATE users SET balance = ? WHERE id = ?;", (new_bal, user_id))
         return new_bal
@@ -198,5 +198,25 @@ class UserRepository:
             (q, q, q)
         )
         return [map_row_to_user(r) for r in rows]
+
+    def set_pin(self, user_id: str, pin_hash: str, pin_salt: str) -> bool:
+        user = self.find_by_id(user_id)
+        if not user:
+            return False
+        db_manager.execute(
+            "UPDATE users SET pin_hash = ?, pin_salt = ? WHERE id = ?;",
+            (pin_hash, pin_salt, user_id)
+        )
+        return True
+
+    def get_pin(self, user_id: str) -> Optional[Tuple[str, str]]:
+        row = db_manager.fetch_one("SELECT pin_hash, pin_salt FROM users WHERE id = ? LIMIT 1;", (user_id,))
+        if not row or not row["pin_hash"] or not row["pin_salt"]:
+            return None
+        return str(row["pin_hash"]), str(row["pin_salt"])
+
+    def has_pin(self, user_id: str) -> bool:
+        row = db_manager.fetch_one("SELECT pin_hash FROM users WHERE id = ? LIMIT 1;", (user_id,))
+        return bool(row and row["pin_hash"])
 
 user_repository = UserRepository()

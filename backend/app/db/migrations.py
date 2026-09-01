@@ -53,6 +53,21 @@ def run_migrations() -> Dict[str, Any]:
             )
             print("[SQLite Migration] Applied 002_add_user_balance successfully.")
 
+        if 3 not in applied:
+            try:
+                conn.execute("ALTER TABLE users ADD COLUMN pin_hash TEXT;")
+            except Exception:
+                pass
+            try:
+                conn.execute("ALTER TABLE users ADD COLUMN pin_salt TEXT;")
+            except Exception:
+                pass
+            conn.execute(
+                "INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?);",
+                (3, "003_add_user_pin_hash", datetime.utcnow().isoformat())
+            )
+            print("[SQLite Migration] Applied 003_add_user_pin_hash successfully.")
+
         # Check if users table is empty; if so, seed from JSON or built-in demo fixtures
         cur.execute("SELECT COUNT(*) FROM users;")
         user_count = cur.fetchone()[0]
@@ -86,10 +101,11 @@ def ensure_demo_accounts_exist() -> None:
         
         if "demo@sentinelfin.com" not in existing_emails:
             pw_hash, pw_salt = hash_password("password123")
+            pin_hash, pin_salt = hash_password("3376")
             conn.execute(
-                """INSERT OR IGNORE INTO users (id, full_name, email, phone, password_hash, password_salt, email_verified, phone_verified, onboarding_completed, city, created_at, last_login)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);""",
-                ("usr-demo-01", "Demo Sentinel User", "demo@sentinelfin.com", "+919876543210", pw_hash, pw_salt, 1, 1, 1, "Bangalore, India", now_iso, now_iso)
+                """INSERT OR IGNORE INTO users (id, full_name, email, phone, password_hash, password_salt, pin_hash, pin_salt, email_verified, phone_verified, onboarding_completed, city, created_at, last_login)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);""",
+                ("usr-demo-01", "Demo Sentinel User", "demo@sentinelfin.com", "+919876543210", pw_hash, pw_salt, pin_hash, pin_salt, 1, 1, 1, "Bangalore, India", now_iso, now_iso)
             )
             conn.execute(
                 """INSERT OR IGNORE INTO financial_profiles (user_id, income_range, spending_target, savings_goal, currency, updated_at)
@@ -109,10 +125,11 @@ def ensure_demo_accounts_exist() -> None:
 
         if "suj@gmail.com" not in existing_emails:
             pw_hash, pw_salt = hash_password("password123")
+            pin_hash, pin_salt = hash_password("3376")
             conn.execute(
-                """INSERT OR IGNORE INTO users (id, full_name, email, phone, password_hash, password_salt, email_verified, phone_verified, onboarding_completed, city, created_at, last_login)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);""",
-                ("usr-suj-02", "Sujith Sentinel", "suj@gmail.com", "+919113093314", pw_hash, pw_salt, 1, 1, 1, "Bengaluru, India", now_iso, now_iso)
+                """INSERT OR IGNORE INTO users (id, full_name, email, phone, password_hash, password_salt, pin_hash, pin_salt, email_verified, phone_verified, onboarding_completed, city, created_at, last_login)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);""",
+                ("usr-suj-02", "Sujith Sentinel", "suj@gmail.com", "+919113093314", pw_hash, pw_salt, pin_hash, pin_salt, 1, 1, 1, "Bengaluru, India", now_iso, now_iso)
             )
             conn.execute(
                 """INSERT OR IGNORE INTO financial_profiles (user_id, income_range, spending_target, savings_goal, currency, updated_at)
@@ -129,6 +146,13 @@ def ensure_demo_accounts_exist() -> None:
                    VALUES (?, ?, ?);""",
                 ("usr-suj-02", 60000.0, now_iso)
             )
+
+        # Ensure demo accounts have PIN initialized if missing
+        cur.execute("SELECT id, pin_hash FROM users WHERE LOWER(email) IN ('demo@sentinelfin.com', 'suj@gmail.com');")
+        for row in cur.fetchall():
+            if not row["pin_hash"]:
+                p_hash, p_salt = hash_password("3376")
+                conn.execute("UPDATE users SET pin_hash = ?, pin_salt = ? WHERE id = ?;", (p_hash, p_salt, row["id"]))
     finally:
         conn.close()
 

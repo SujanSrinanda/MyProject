@@ -276,18 +276,8 @@ export const userApi = {
 
   async getBudgets() {
     const res = await fetchFastApi('/api/budgets');
-    if (res.error) {
-      return {
-        monthlyLimit: 45000,
-        categories: [
-          { category: 'Food & Dining', limit: 12000 },
-          { category: 'Transfers', limit: 6000 },
-          { category: 'Bills & Utilities', limit: 10000 },
-          { category: 'Shopping', limit: 8000 },
-          { category: 'Entertainment', limit: 4000 },
-          { category: 'Others', limit: 5000 },
-        ],
-      };
+    if (res.error || !res.data) {
+      throw new ApiError(res.error || 'Unable to load budget', res.status || 400);
     }
     return res.data;
   },
@@ -303,33 +293,46 @@ export const userApi = {
     return res.data;
   },
 
-  async getSecurityPin(): Promise<string> {
-    try {
-      return localStorage.getItem('sentinelfin_pin') || '3376';
-    } catch {
-      return '3376';
+  async getSecurityPinStatus(): Promise<{ hasPin: boolean }> {
+    const res = await fetchFastApi('/api/users/pin/status');
+    if (res.error || !res.data) {
+      throw new ApiError(res.error || 'Failed to check security PIN status', res.status || 400);
     }
+    return res.data;
   },
 
   async setSecurityPin(pin: string): Promise<{ success: boolean; message: string }> {
-    if (pin.trim().length !== 4) throw new ApiError('PIN must be 4 digits', 400);
-    try {
-      localStorage.setItem('sentinelfin_pin', pin.trim());
-    } catch {}
-    return { success: true, message: 'Payment PIN updated successfully.' };
+    if (pin.trim().length !== 4) throw new ApiError('PIN must be 4 numeric digits', 400);
+    const res = await fetchFastApi('/api/users/pin/set', {
+      method: 'POST',
+      body: JSON.stringify({ pin: pin.trim() }),
+    });
+    if (res.error) {
+      throw new ApiError(res.error, res.status || 400);
+    }
+    return res.data;
   },
 
   async verifySecurityPin(inputPin: string): Promise<boolean> {
-    const pin = await this.getSecurityPin();
-    return inputPin.trim() === pin || inputPin.trim() === '3376' || inputPin.trim().length === 4;
+    if (!inputPin || inputPin.trim().length !== 4) {
+      throw new ApiError('Invalid PIN format. Must be 4 numeric digits.', 400);
+    }
+    const res = await fetchFastApi('/api/users/pin/verify', {
+      method: 'POST',
+      body: JSON.stringify({ pin: inputPin.trim() }),
+    });
+    if (res.error) {
+      throw new ApiError(res.error, res.status || 400);
+    }
+    return !!res.data?.verified;
   },
 
   async getTransactions(): Promise<Transaction[]> {
     const res = await fetchFastApi('/api/transactions');
-    if (res.error || !Array.isArray(res.data)) {
-      return [];
+    if (res.error) {
+      throw new ApiError(res.error, res.status || 400);
     }
-    return res.data;
+    return Array.isArray(res.data) ? res.data : [];
   },
 
   async addTransaction(tx: Omit<Transaction, 'id'>): Promise<Transaction> {
@@ -344,16 +347,22 @@ export const userApi = {
     return res.data;
   },
 
-  async deleteTransaction(_id: string): Promise<boolean> {
+  async deleteTransaction(id: string): Promise<boolean> {
+    const res = await fetchFastApi(`/api/transactions/${id}`, {
+      method: 'DELETE',
+    });
+    if (res.error) {
+      throw new ApiError(res.error, res.status || 400);
+    }
     return true;
   },
 
   async getContacts(): Promise<Contact[]> {
     const res = await fetchFastApi('/api/contacts');
-    if (res.error || !Array.isArray(res.data)) {
-      return [];
+    if (res.error) {
+      throw new ApiError(res.error, res.status || 400);
     }
-    return res.data;
+    return Array.isArray(res.data) ? res.data : [];
   },
 
   async addContact(contact: Omit<Contact, 'id' | 'userId'>): Promise<Contact> {
@@ -391,14 +400,21 @@ export const userApi = {
 
   async getAlerts(): Promise<SecurityAlert[]> {
     const res = await fetchFastApi('/api/alerts');
-    if (res.error || !Array.isArray(res.data)) {
-      return [];
+    if (res.error) {
+      throw new ApiError(res.error, res.status || 400);
     }
-    return res.data;
+    return Array.isArray(res.data) ? res.data : [];
   },
 
-  async addAlert(_alert: SecurityAlert) {
-    return { success: true };
+  async addAlert(alert: Partial<SecurityAlert>): Promise<SecurityAlert> {
+    const res = await fetchFastApi('/api/alerts', {
+      method: 'POST',
+      body: JSON.stringify(alert),
+    });
+    if (res.error) {
+      throw new ApiError(res.error, res.status || 400);
+    }
+    return res.data;
   },
 
   async updateAlert(id: string, updates: Partial<SecurityAlert>) {
@@ -434,10 +450,10 @@ export const userApi = {
 
   async getDevices(): Promise<TrustedDevice[]> {
     const res = await fetchFastApi('/api/devices');
-    if (res.error || !Array.isArray(res.data)) {
-      return [];
+    if (res.error) {
+      throw new ApiError(res.error, res.status || 400);
     }
-    return res.data;
+    return Array.isArray(res.data) ? res.data : [];
   },
 
   async registerDevice(deviceMeta: any) {
@@ -446,7 +462,7 @@ export const userApi = {
       body: JSON.stringify(deviceMeta),
     });
     if (res.error) {
-      return { success: false };
+      throw new ApiError(res.error, res.status || 400);
     }
     return res.data;
   },
@@ -459,6 +475,24 @@ export const userApi = {
       throw new ApiError(res.error, res.status || 400);
     }
     return res.data;
+  },
+
+  async searchUsers(query: string): Promise<Array<{ id: string; name: string; email: string; phone: string; city?: string; profilePhoto?: string }>> {
+    if (!query || query.trim().length < 2) return [];
+    const res = await fetchFastApi(`/api/users/search?q=${encodeURIComponent(query.trim())}`);
+    if (res.error || !res.data || !Array.isArray(res.data.users)) {
+      return [];
+    }
+    return res.data.users;
+  },
+
+  async lookupUser(identifier: string): Promise<{ id: string; name: string; email: string; phone: string; city?: string; profilePhoto?: string } | null> {
+    if (!identifier) return null;
+    const res = await fetchFastApi(`/api/users/lookup/${encodeURIComponent(identifier.trim())}`);
+    if (res.error || !res.data || !res.data.user) {
+      return null;
+    }
+    return res.data.user;
   },
 
   async evaluateTransactionRisk(reqData: RiskEvaluationRequest): Promise<RiskEvaluationResponse> {
@@ -474,44 +508,20 @@ export const userApi = {
       }),
     });
 
-    if (res.data && !res.error) {
-      return {
-        decision: res.data.decision || 'ALLOW',
-        safetyScore: res.data.safetyScore ?? 90,
-        riskLevel: res.data.riskLevel || 'LOW',
-        userMessage: res.data.userMessage || 'Transaction analyzed.',
-        humanReasons: res.data.humanReasons || [],
-        technicalDetails: res.data.technicalDetails || {
-          rfScore: 0.05,
-          ifScore: -0.15,
-          graphRisk: 0.02,
-          shapFactors: [
-            { factor: 'Recipient Trusted Status', impact: 'Reduces Risk', weight: -0.35 },
-            { factor: 'Amount within typical range', impact: 'Reduces Risk', weight: -0.25 },
-          ],
-          riskFusionModel: 'RandomForest + IsolationForest Ensembled',
-          anomaliesDetected: [],
-        },
-      };
+    if (res.error || !res.data) {
+      throw new ApiError(
+        res.error || 'Fraud risk evaluation failed. Transaction blocked for your security.',
+        res.status || 503
+      );
     }
 
     return {
-      decision: 'ALLOW',
-      safetyScore: 92,
-      riskLevel: 'LOW',
-      userMessage: 'Payment verified.',
-      humanReasons: ['Legitimate transaction pattern verified'],
-      technicalDetails: {
-        rfScore: 0.05,
-        ifScore: -0.15,
-        graphRisk: 0.02,
-        shapFactors: [
-          { factor: 'Recipient Trusted Status', impact: 'Reduces Risk', weight: -0.35 },
-          { factor: 'Amount within typical range', impact: 'Reduces Risk', weight: -0.25 },
-        ],
-        riskFusionModel: 'RandomForest + IsolationForest Ensembled',
-        anomaliesDetected: [],
-      },
+      decision: res.data.decision,
+      safetyScore: res.data.safetyScore,
+      riskLevel: res.data.riskLevel,
+      userMessage: res.data.userMessage || 'Transaction analyzed by SentinelFin ML Risk Engine.',
+      humanReasons: res.data.humanReasons || [],
+      technicalDetails: res.data.technicalDetails,
     };
   },
 };

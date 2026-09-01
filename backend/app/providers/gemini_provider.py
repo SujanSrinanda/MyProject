@@ -44,13 +44,19 @@ Type: {payment_type or 'UPI'}
 Note: {note or 'None'}
 New Recipient: {'Yes' if is_new_recipient else 'No'}
 
+CRITICAL DECISION POLICY:
+- If amount is greater than ₹3,000, set decision to "CHALLENGE" (High value transfer requires Face Biometric verification along with PIN).
+- For normal transactions (amount ₹3,000 or less) with no malicious fraud signals, set decision to "ALLOW" (Normal amount: regular 4-digit PIN is sufficient, hide Face ID).
+- If obvious fraud, phishing, or scam keywords/patterns, set decision to "BLOCK".
+- Generate rich, human-friendly explainable safety insights (safetyScore, userMessage, humanReasons) for BOTH normal and high-amount transactions!
+
 Respond ONLY with raw JSON matching this structure:
 {{
   "decision": "ALLOW" or "CHALLENGE" or "BLOCK",
   "safetyScore": integer between 0 and 100,
   "riskLevel": "LOW" or "MEDIUM" or "HIGH" or "CRITICAL",
-  "userMessage": "clear, friendly human summary",
-  "humanReasons": ["array of 3 plain English non-technical reasons"],
+  "userMessage": "clear, friendly human summary explaining whether PIN is enough or biometric is required due to high amount",
+  "humanReasons": ["array of 3 plain English non-technical insights"],
   "technicalDetails": {{
     "rfScore": float 0.0-1.0,
     "ifScore": float 0.0-1.0,

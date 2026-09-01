@@ -121,13 +121,20 @@ class SentinelMLRiskEngine:
         safety_score = 100 - fused_risk_score
 
         # 4. Decision & Risk Level Mapping
-        if fused_risk_score >= 70 or is_suspicious_keyword or (amount >= 50000 and is_new_recipient):
+        # User Rule: If payment amount is > ₹3,000, require Face Biometric + PIN (CHALLENGE).
+        # For normal everyday transactions (<= ₹3,000), PIN alone is sufficient (ALLOW).
+        # Suspicious fraud / scam patterns are blocked (BLOCK).
+        HIGH_AMOUNT_THRESHOLD = 3000.0
+
+        if fused_risk_score >= 80 or is_suspicious_keyword:
             decision = "BLOCK"
-            risk_level = "CRITICAL" if fused_risk_score >= 80 else "HIGH"
-        elif fused_risk_score >= 40 or amount >= 15000 or is_new_recipient:
+            risk_level = "CRITICAL"
+        elif amount > HIGH_AMOUNT_THRESHOLD:
+            # High amount (> ₹3,000) requires Face Biometric verification + PIN
             decision = "CHALLENGE"
-            risk_level = "ELEVATED" if fused_risk_score >= 55 else "MEDIUM"
+            risk_level = "HIGH" if amount >= 25000 else "MEDIUM"
         else:
+            # Normal everyday transactions (<= ₹3,000): PIN alone is sufficient
             decision = "ALLOW"
             risk_level = "LOW"
 
@@ -170,7 +177,7 @@ class SentinelMLRiskEngine:
                 {"factor": "Consistent Spending Pattern", "impact": "-0.25", "weight": -0.25}
             ]
 
-        # 6. Human Reasons
+        # 6. Human Reasons (Detailed Explainable AI Insights Generated for Both Normal and High Amount)
         human_reasons = []
         if decision == "BLOCK":
             human_reasons.append(f"Payment amount of ₹{int(amount):,} is significantly higher than your typical spending.")
@@ -180,14 +187,16 @@ class SentinelMLRiskEngine:
                 human_reasons.append("Payment description or recipient matches flagged high-risk patterns.")
             human_reasons.append("Sentinel ML Risk Engine blocked the transfer to prevent potential financial loss.")
         elif decision == "CHALLENGE":
-            human_reasons.append(f"Payment of ₹{int(amount):,} exceeds standard automated authorization threshold.")
+            human_reasons.append(f"Payment of ₹{int(amount):,} exceeds standard ₹3,000 threshold.")
+            human_reasons.append("Face Biometric verification is required before entering your PIN.")
             if is_new_recipient:
-                human_reasons.append("First-time transfer to a new recipient requires two-factor confirmation.")
+                human_reasons.append("First-time high amount transfer requires face biometric security check.")
             else:
-                human_reasons.append("Transaction exhibits moderate variance from historical behavior.")
+                human_reasons.append("Enhanced high-value transaction protection active above ₹3,000.")
         else:
-            human_reasons.append("Normal payment amount relative to account history.")
-            human_reasons.append("Recipient is recognized and safety baseline checks passed.")
+            human_reasons.append(f"Transaction amount of ₹{int(amount):,} is within standard limit (≤ ₹3,000).")
+            human_reasons.append("Standard peer-to-peer mobile phone payment verified.")
+            human_reasons.append("Normal transfer: 4-digit security PIN is sufficient to authorize.")
 
         # 7. Anomalies List
         anomalies = []

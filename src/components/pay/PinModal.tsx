@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Lock, X, Delete, ShieldCheck, AlertCircle, Sparkles, KeyRound } from 'lucide-react';
 import { userApi } from '../../services/api';
+import { RiskEvaluationResponse } from '../../types';
 
 interface PinModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface PinModalProps {
   amount: number;
   recipientName: string;
   isDemo?: boolean;
+  evaluation?: RiskEvaluationResponse | null;
 }
 
 export const PinModal: React.FC<PinModalProps> = ({
@@ -18,6 +20,7 @@ export const PinModal: React.FC<PinModalProps> = ({
   amount,
   recipientName,
   isDemo = false,
+  evaluation,
 }) => {
   const [pin, setPin] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +78,6 @@ export const PinModal: React.FC<PinModalProps> = ({
     setError(null);
 
     try {
-      // Allow demo PIN 3376 or saved user PIN
       const isValid = await userApi.verifySecurityPin(inputPin);
 
       if (isValid) {
@@ -88,8 +90,8 @@ export const PinModal: React.FC<PinModalProps> = ({
         setPin('');
         setVerifying(false);
       }
-    } catch (err) {
-      setError('Unable to verify PIN. Please try again.');
+    } catch (err: any) {
+      setError(err?.message || 'Incorrect PIN. Please try again.');
       setPin('');
       setVerifying(false);
     }
@@ -126,6 +128,29 @@ export const PinModal: React.FC<PinModalProps> = ({
             <strong className="text-black">{recipientName}</strong>
           </p>
         </div>
+
+        {/* AI Safety Insights Card */}
+        {evaluation && (
+          <div className="bg-[#FAF7F2] border-2 border-black/20 p-2.5 rounded-xl text-left space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                AI Safety Insights Verified
+              </span>
+              <span className="text-[10px] font-black bg-emerald-100 border border-emerald-800 text-emerald-950 px-1.5 py-0.5 rounded">
+                Score {evaluation.safetyScore}/100
+              </span>
+            </div>
+            <ul className="text-[11px] font-medium text-black/80 space-y-0.5">
+              {evaluation.humanReasons.map((reason, idx) => (
+                <li key={idx} className="flex items-start gap-1">
+                  <span className="text-[#7C3AED] font-bold">•</span>
+                  <span>{reason}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* PIN 4-Dots Display */}
         <div className="flex justify-center items-center gap-3 py-2">

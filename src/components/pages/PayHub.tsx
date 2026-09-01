@@ -167,8 +167,10 @@ export const PayHub: React.FC<PayHubProps> = ({ onNavigate, onOpenQR, prefilledP
       const result = await evaluatePayment(req);
       setEvaluation(result);
 
-      // If SAFE / ALLOW, directly open PIN modal for frictionless UPI payment!
-      if (result.decision === 'ALLOW') {
+      // If amount > 3000 (CHALLENGE), ask for Face ID first; if <= 3000 (ALLOW), use PIN directly and hide Face ID!
+      if (result.decision === 'CHALLENGE') {
+        setIsBiometricOpen(true);
+      } else if (result.decision === 'ALLOW') {
         setIsPinModalOpen(true);
       }
     } catch (err: any) {
@@ -275,7 +277,6 @@ export const PayHub: React.FC<PayHubProps> = ({ onNavigate, onOpenQR, prefilledP
             <span className="text-[10px] font-black uppercase tracking-wider text-black/60">
               Select Payment Scenario to Test:
             </span>
-            <span className="text-[10px] font-bold text-black/40">Demo PIN: 3376</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -495,8 +496,8 @@ export const PayHub: React.FC<PayHubProps> = ({ onNavigate, onOpenQR, prefilledP
         </form>
       </div>
 
-      {/* Safety Decision & Insights View (for Challenged or Blocked Transactions) */}
-      {evaluation && evaluation.decision !== 'ALLOW' && (
+      {/* Safety Decision & Insights View (for Normal, Challenged or Blocked Transactions) */}
+      {evaluation && (
         <div className="bg-white border-2 border-black rounded-2xl p-5 md:p-6 shadow-[6px_6px_0px_#000000] space-y-4 animate-in slide-in-from-bottom duration-300">
           <div className="flex items-center justify-between gap-3 border-b-2 border-black/10 pb-3">
             <div className="flex items-center gap-2.5">
@@ -504,7 +505,9 @@ export const PayHub: React.FC<PayHubProps> = ({ onNavigate, onOpenQR, prefilledP
                 className={`text-xs font-black uppercase px-2.5 py-1 rounded-md border-2 border-black flex items-center gap-1.5 ${
                   evaluation.decision === 'BLOCK'
                     ? 'bg-red-600 text-white'
-                    : 'bg-amber-400 text-black'
+                    : evaluation.decision === 'CHALLENGE'
+                    ? 'bg-amber-400 text-black'
+                    : 'bg-emerald-500 text-white'
                 }`}
               >
                 {evaluation.decision === 'BLOCK' ? (
@@ -512,10 +515,15 @@ export const PayHub: React.FC<PayHubProps> = ({ onNavigate, onOpenQR, prefilledP
                     <ShieldAlert className="w-3.5 h-3.5" />
                     <span>PAYMENT BLOCKED</span>
                   </>
-                ) : (
+                ) : evaluation.decision === 'CHALLENGE' ? (
                   <>
                     <AlertTriangle className="w-3.5 h-3.5" />
-                    <span>SAFETY CHALLENGE</span>
+                    <span>HIGH VALUE CHALLENGE</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>PAYMENT LOOKS SAFE</span>
                   </>
                 )}
               </span>
@@ -562,11 +570,11 @@ export const PayHub: React.FC<PayHubProps> = ({ onNavigate, onOpenQR, prefilledP
                   This destination account has been flagged for suspicious activity. To protect your money, payments to this recipient are suspended.
                 </p>
               </div>
-            ) : (
+            ) : evaluation.decision === 'CHALLENGE' ? (
               <div className="space-y-2">
                 <div className="p-3 bg-amber-50 border-2 border-amber-300 rounded-xl text-xs font-bold text-amber-900 flex items-center gap-2">
                   <Camera className="w-4 h-4 text-amber-800 shrink-0" />
-                  <span>Because this transfer is unusual, face biometric verification is required before entering your PIN.</span>
+                  <span>Payment exceeds ₹3,000 threshold. Face Biometric verification is required before entering your PIN.</span>
                 </div>
 
                 <div className="flex items-center gap-3 pt-1">
@@ -585,6 +593,32 @@ export const PayHub: React.FC<PayHubProps> = ({ onNavigate, onOpenQR, prefilledP
                   >
                     <Camera className="w-4 h-4" />
                     <span>Verify Face ID &amp; Continue →</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="p-3 bg-emerald-50 border-2 border-emerald-300 rounded-xl text-xs font-bold text-emerald-900 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span>Normal everyday transaction (≤ ₹3,000). Your 4-digit security PIN is sufficient to authorize.</span>
+                </div>
+
+                <div className="flex items-center gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setEvaluation(null)}
+                    className="w-1/3 py-3 bg-[#FAF7F2] hover:bg-gray-200 text-black border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_#000000] cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsPinModalOpen(true)}
+                    disabled={submitting}
+                    className="w-2/3 py-3 bg-[#7C3AED] hover:bg-[#6D28D9] text-white border-2 border-black rounded-xl text-xs font-black uppercase shadow-[3px_3px_0px_#000000] flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <KeyRound className="w-4 h-4" />
+                    <span>Enter PIN &amp; Complete Payment →</span>
                   </button>
                 </div>
               </div>
@@ -614,6 +648,7 @@ export const PayHub: React.FC<PayHubProps> = ({ onNavigate, onOpenQR, prefilledP
         amount={parseFloat(amount || '0')}
         recipientName={recipientName || 'Recipient'}
         isDemo={isDemoAccount}
+        evaluation={evaluation}
       />
     </div>
   );

@@ -100,19 +100,20 @@ export const Profile: React.FC<ProfileProps> = ({ onNavigate }) => {
 
   // Payment PIN management state
   const isDemoAccount = user?.id === 'usr_sujan_demo' || user?.email === 'demo@sentinelfin.com';
-  const [currentPin, setCurrentPin] = useState<string>('3376');
+  const [hasConfiguredPin, setHasConfiguredPin] = useState<boolean>(true);
   const [newPin, setNewPin] = useState<string>('');
   const [confirmPin, setConfirmPin] = useState<string>('');
   const [showPinForm, setShowPinForm] = useState<boolean>(false);
-  const [showPinDigits, setShowPinDigits] = useState<boolean>(false);
   const [pinMessage, setPinMessage] = useState<string | null>(null);
   const [pinError, setPinError] = useState<string | null>(null);
   const [updatingPin, setUpdatingPin] = useState<boolean>(false);
 
   useEffect(() => {
-    userApi.getSecurityPin().then((p) => {
-      if (p) setCurrentPin(p);
-    });
+    userApi.getSecurityPinStatus().then((res) => {
+      if (res && typeof res.hasPin === 'boolean') {
+        setHasConfiguredPin(res.hasPin);
+      }
+    }).catch(() => {});
   }, []);
 
   const handleUpdatePin = async (e: React.FormEvent) => {
@@ -133,11 +134,11 @@ export const Profile: React.FC<ProfileProps> = ({ onNavigate }) => {
     try {
       setUpdatingPin(true);
       await userApi.setSecurityPin(newPin);
-      setCurrentPin(newPin);
+      setHasConfiguredPin(true);
       setNewPin('');
       setConfirmPin('');
       setShowPinForm(false);
-      setPinMessage('Payment PIN successfully updated!');
+      setPinMessage('Payment PIN successfully updated and secured!');
       setTimeout(() => setPinMessage(null), 4000);
     } catch (err: any) {
       setPinError(err?.message || 'Failed to update PIN.');
@@ -577,16 +578,9 @@ export const Profile: React.FC<ProfileProps> = ({ onNavigate }) => {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="px-3 py-1.5 bg-white border-2 border-black rounded-lg font-mono font-black text-sm tracking-widest text-black shadow-[1px_1px_0px_#000000] flex items-center gap-2">
-                <span>{showPinDigits ? currentPin : '••••'}</span>
-                <button
-                  type="button"
-                  onClick={() => setShowPinDigits(!showPinDigits)}
-                  className="text-black/50 hover:text-black cursor-pointer p-0.5"
-                  title={showPinDigits ? 'Hide PIN' : 'Show PIN'}
-                >
-                  {showPinDigits ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                </button>
+              <div className="px-3 py-1.5 bg-white border-2 border-black rounded-lg font-mono font-black text-xs tracking-widest text-black shadow-[1px_1px_0px_#000000] flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>{hasConfiguredPin ? 'CONFIGURED (HASHED)' : 'NOT CONFIGURED'}</span>
               </div>
 
               <button

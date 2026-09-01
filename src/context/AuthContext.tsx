@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: res.user.fullName,
           email: res.user.email,
           phone: res.user.phone,
-          balance: res.user.balance !== undefined ? Number(res.user.balance) : (res.financialProfile?.spendingTarget !== undefined ? Number(res.financialProfile.spendingTarget) : 45000),
+          balance: res.user.balance !== undefined ? Number(res.user.balance) : 0,
           safetyScore: 95,
           protectionLevel: res.securityProfile?.protectionLevel || 'High Protection',
           notificationsEnabled: res.securityProfile?.securityAlertsEnabled ?? true,

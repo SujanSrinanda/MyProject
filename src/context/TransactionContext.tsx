@@ -11,7 +11,7 @@ import {
   TransactionCategory,
   ModelWeights,
 } from '../types';
-import { evaluateTransactionRisk, DEFAULT_MODEL_WEIGHTS } from '../utils/riskEngine';
+import { DEFAULT_MODEL_WEIGHTS } from '../utils/riskEngine';
 import {
   DEFAULT_CATEGORY_THRESHOLDS,
   CategorySpendingSummary,
@@ -77,46 +77,19 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [error, setError] = useState<string | null>(null);
   const [activeTransaction, setActiveTransaction] = useState<Transaction | null>(null);
 
-  const [modelWeights, setModelWeights] = useState<ModelWeights>(() => {
-    try {
-      const saved = localStorage.getItem('sentinel_model_weights');
-      return saved ? { ...DEFAULT_MODEL_WEIGHTS, ...JSON.parse(saved) } : DEFAULT_MODEL_WEIGHTS;
-    } catch {
-      return DEFAULT_MODEL_WEIGHTS;
-    }
-  });
+  const [modelWeights, setModelWeights] = useState<ModelWeights>(DEFAULT_MODEL_WEIGHTS);
 
   const updateModelWeights = (newWeights: Partial<ModelWeights>) => {
-    setModelWeights((prev) => {
-      const updated = { ...prev, ...newWeights };
-      try {
-        localStorage.setItem('sentinel_model_weights', JSON.stringify(updated));
-      } catch {
-        // Ignored
-      }
-      return updated;
-    });
+    setModelWeights((prev) => ({ ...prev, ...newWeights }));
   };
 
   const resetModelWeights = () => {
     setModelWeights(DEFAULT_MODEL_WEIGHTS);
-    try {
-      localStorage.setItem('sentinel_model_weights', JSON.stringify(DEFAULT_MODEL_WEIGHTS));
-    } catch {
-      // Ignored
-    }
   };
 
-  const [categoryThresholds, setCategoryThresholds] = useState<Record<TransactionCategory, number>>(() => {
-    try {
-      const saved = localStorage.getItem('sentinel_category_thresholds');
-      return saved ? JSON.parse(saved) : DEFAULT_CATEGORY_THRESHOLDS;
-    } catch {
-      return DEFAULT_CATEGORY_THRESHOLDS;
-    }
-  });
-
-  const [monthlyBudgetLimit, setMonthlyBudgetLimit] = useState<number>(45000);
+  const [categoryThresholds, setCategoryThresholds] = useState<Record<TransactionCategory, number>>(DEFAULT_CATEGORY_THRESHOLDS);
+  const [monthlyBudgetLimit, setMonthlyBudgetLimit] = useState<number>(0);
+  const [budgetLoaded, setBudgetLoaded] = useState<boolean>(false);
 
   const clearUserData = useCallback(() => {
     setTransactions([]);
@@ -124,7 +97,9 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setAlerts([]);
     setDevices([]);
     setActiveTransaction(null);
-    setMonthlyBudgetLimit(45000);
+    setMonthlyBudgetLimit(0);
+    setBudgetLoaded(false);
+    setCategoryThresholds(DEFAULT_CATEGORY_THRESHOLDS);
     setError(null);
   }, []);
 
@@ -147,16 +122,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
       ]);
 
       if (txs.status === 'fulfilled') {
-        const isUnwantedWelcomeTx = (t: Transaction) =>
-          t.id?.startsWith('tx-welcome') ||
-          t.recipientName?.toLowerCase().includes('bank account linked') ||
-          t.recipientName?.toLowerCase().includes('sentinel vault') ||
-          t.note?.toLowerCase().includes('welcome credit') ||
-          (t.amount === 35000 && t.recipientName?.toLowerCase().includes('bank account'));
-
-        const rawList = Array.isArray(txs.value) ? txs.value : [];
-        const cleaned = rawList.filter((t) => !isUnwantedWelcomeTx(t));
-        setTransactions(cleaned);
+        setTransactions(Array.isArray(txs.value) ? txs.value : []);
       } else {
         console.error('Failed to fetch transactions from server:', txs.reason);
         setTransactions([]);
@@ -196,12 +162,11 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
             }
           });
           setCategoryThresholds(loadedThresholds as Record<TransactionCategory, number>);
-          try {
-            localStorage.setItem('sentinel_category_thresholds', JSON.stringify(loadedThresholds));
-          } catch {
-            // Ignored
-          }
         }
+        setBudgetLoaded(true);
+      } else if (bdgt.status === 'rejected') {
+        console.error('Failed to fetch budget from server:', bdgt.reason);
+        setError((prev) => (prev ? `${prev} Unable to load budget.` : 'Unable to load budget from server.'));
       }
     } catch (e: any) {
       console.warn('Error loading user data from backend API:', e);
@@ -248,11 +213,6 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const prevThresholds = { ...categoryThresholds };
     const updated = { ...categoryThresholds, [category]: newThreshold };
     setCategoryThresholds(updated);
-    try {
-      localStorage.setItem('sentinel_category_thresholds', JSON.stringify(updated));
-    } catch {
-      // Local handled
-    }
 
     if (isAuthenticated) {
       try {
@@ -265,11 +225,6 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         console.error('Failed to persist category threshold:', e);
         // Rollback on failure
         setCategoryThresholds(prevThresholds);
-        try {
-          localStorage.setItem('sentinel_category_thresholds', JSON.stringify(prevThresholds));
-        } catch {
-          // Local handled
-        }
         throw e;
       }
     }
@@ -327,11 +282,8 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, [transactions, categoryThresholds, totalMonthlySpent, monthlyBudgetLimit, userId, loading]);
 
   const evaluatePayment = async (req: RiskEvaluationRequest): Promise<RiskEvaluationResponse> => {
-    try {
-      return await userApi.evaluateTransactionRisk(req);
-    } catch (e) {
-      return await evaluateTransactionRisk(req, modelWeights);
-    }
+    // Sole risk authority: FastAPI Zero-Trust ML Risk Engine (Fail closed)
+    return await userApi.evaluateTransactionRisk(req);
   };
 
   const confirmPayment = async (

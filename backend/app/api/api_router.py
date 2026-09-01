@@ -11,14 +11,14 @@ from backend.app.api.neo4j_routes import neo4j_router
 from backend.app.services.transaction_service import transaction_service
 from backend.app.middleware.auth_middleware import get_current_user
 
-api_router = APIRouter(prefix="/api")
+api_router = APIRouter()
 
-@api_router.get("/health")
+@api_router.get("/api/health")
 async def health_check():
     return {"status": "ok", "service": "SentinelFin Security Core (Python FastAPI)"}
 
 # Evaluate transaction top-level route alias
-@api_router.post("/evaluate-transaction")
+@api_router.post("/api/evaluate-transaction")
 async def evaluate_transaction_alias(
     payload: Dict[str, Any] = Body(...),
     current_user: Dict[str, Any] = Depends(get_current_user)
@@ -29,11 +29,11 @@ async def evaluate_transaction_alias(
     return data
 
 # Mount modular sub-routers
-api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
-api_router.include_router(user_router, prefix="/users", tags=["users"])
-api_router.include_router(budget_router, prefix="/budgets", tags=["budgets"])
-api_router.include_router(transaction_router, prefix="/transactions", tags=["transactions"])
-api_router.include_router(contact_router, prefix="/contacts", tags=["contacts"])
-api_router.include_router(alert_router, prefix="/alerts", tags=["alerts"])
-api_router.include_router(device_router, prefix="/devices", tags=["devices"])
-api_router.include_router(neo4j_router, prefix="/neo4j", tags=["neo4j"])
+api_router.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+api_router.include_router(user_router, prefix="/api/users", tags=["users"])
+api_router.include_router(budget_router, prefix="/api/budgets", tags=["budgets"])
+api_router.include_router(transaction_router, prefix="/api/transactions", tags=["transactions"])
+api_router.include_router(contact_router, prefix="/api/contacts", tags=["contacts"])
+api_router.include_router(alert_router, prefix="/api/alerts", tags=["alerts"])
+api_router.include_router(device_router, prefix="/api/devices", tags=["devices"])
+api_router.include_router(neo4j_router, prefix="/api/neo4j", tags=["neo4j"])

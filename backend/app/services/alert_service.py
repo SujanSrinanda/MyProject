@@ -9,6 +9,11 @@ class AlertService:
         alerts = self.alert_repo.find_by_user_id(user_id)
         return 200, alerts
 
+    async def create_alert(self, user_id: str, payload: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        alert_data = {**payload, "userId": user_id}
+        created = self.alert_repo.create(alert_data)
+        return 201, created
+
     async def update_alert(self, alert_id: str, user_id: str, updates: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         success = self.alert_repo.update(alert_id, user_id, updates)
         if not success:

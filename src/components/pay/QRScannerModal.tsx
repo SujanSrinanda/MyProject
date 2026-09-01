@@ -19,6 +19,8 @@ import { useTransactions } from '../../context/TransactionContext';
 import { parseQRCodePayload, ParsedQRData } from '../../utils/qrParser';
 import { RiskEvaluationRequest, RiskEvaluationResponse } from '../../types';
 import { NeoButton } from '../common/NeoButton';
+import { BiometricAuthModal } from './BiometricAuthModal';
+import { PinModal } from './PinModal';
 
 interface QRScannerModalProps {
   isOpen: boolean;
@@ -58,6 +60,8 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
   const [evaluation, setEvaluation] = useState<RiskEvaluationResponse | null>(null);
   const [evaluationError, setEvaluationError] = useState<string | null>(null);
   const [isSubmittingPayment, setIsSubmittingPayment] = useState<boolean>(false);
+  const [isBiometricOpen, setIsBiometricOpen] = useState<boolean>(false);
+  const [isPinModalOpen, setIsPinModalOpen] = useState<boolean>(false);
 
   // Stop camera tracks cleanly
   const stopCameraStream = useCallback(() => {
@@ -689,11 +693,11 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={handleFinalizePayment}
+                    onClick={() => setIsBiometricOpen(true)}
                     disabled={isSubmittingPayment}
                     className="flex-1 py-2.5 bg-[#7C3AED] text-white border-2 border-black rounded-lg text-xs font-black uppercase neo-shadow hover:bg-purple-700 cursor-pointer"
                   >
-                    {isSubmittingPayment ? 'Authorizing...' : 'Verify & Pay'}
+                    Verify Face ID &amp; Continue →
                   </button>
                 </div>
               </div>
@@ -729,16 +733,38 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
 
                 <button
                   type="button"
-                  onClick={handleFinalizePayment}
+                  onClick={() => setIsPinModalOpen(true)}
                   disabled={isSubmittingPayment}
                   className="w-full py-3 bg-[#7C3AED] text-white font-black uppercase text-xs border-2 border-black rounded-lg neo-shadow hover:bg-purple-700 cursor-pointer flex items-center justify-center gap-2"
                 >
-                  {isSubmittingPayment ? 'Processing Payment...' : 'Confirm & Complete Payment →'}
+                  Enter PIN &amp; Complete Payment →
                 </button>
               </div>
             )}
           </div>
         )}
+
+        {/* Biometric Verification Modal for High-Value QR Transfers */}
+        <BiometricAuthModal
+          isOpen={isBiometricOpen}
+          onClose={() => setIsBiometricOpen(false)}
+          onSuccess={() => {
+            setIsBiometricOpen(false);
+            setIsPinModalOpen(true);
+          }}
+          amount={parseFloat(amountInput || '0')}
+          recipientName={scannedQR?.name || 'QR Payee'}
+        />
+
+        {/* Security PIN Modal */}
+        <PinModal
+          isOpen={isPinModalOpen}
+          onClose={() => setIsPinModalOpen(false)}
+          onSuccess={handleFinalizePayment}
+          amount={parseFloat(amountInput || '0')}
+          recipientName={scannedQR?.name || 'QR Payee'}
+          evaluation={evaluation}
+        />
       </div>
     </div>
   );

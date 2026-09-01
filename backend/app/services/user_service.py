@@ -1,6 +1,7 @@
 from typing import Dict, Any, Tuple
 from backend.app.repositories.user_repo import user_repository, UserRepository
 from backend.app.repositories.budget_repo import budget_repository, BudgetRepository
+from backend.app.core.security import hash_password, verify_password
 
 class UserService:
     def __init__(
@@ -89,21 +90,22 @@ class UserService:
 
     async def get_profile(self, user: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         user_id = user["id"]
+        fresh_user = self.user_repo.find_by_id(user_id) or user
         fin = self.user_repo.get_financial_profile(user_id)
         sec = self.user_repo.get_security_profile(user_id)
 
         return 200, {
-            "uid": user["id"],
-            "name": user["fullName"],
-            "email": user["email"],
-            "phone": user["phone"],
-            "balance": float(user.get("balance", 45000.0)),
+            "uid": fresh_user["id"],
+            "name": fresh_user.get("fullName", user.get("fullName", "")),
+            "email": fresh_user.get("email", user.get("email", "")),
+            "phone": fresh_user.get("phone", user.get("phone", "")),
+            "balance": float(fresh_user.get("balance", 0.0)),
             "safetyScore": 94,
             "protectionLevel": sec["protectionLevel"] if sec else "High Protection",
             "notificationsEnabled": sec["securityAlertsEnabled"] if sec else True,
-            "city": user.get("city") or "Bengaluru",
-            "profilePhoto": user.get("profilePhoto"),
-            "createdAt": user["createdAt"],
+            "city": fresh_user.get("city") or "Bengaluru",
+            "profilePhoto": fresh_user.get("profilePhoto"),
+            "createdAt": fresh_user.get("createdAt") or datetime.utcnow().isoformat(),
             "financialProfile": fin or None,
             "securityProfile": sec or None,
         }
@@ -197,5 +199,72 @@ class UserService:
                 "securityProfile": final_sec or None,
             }
         }
+
+    async def search_users(self, current_user_id: str, query_str: str) -> Tuple[int, Dict[str, Any]]:
+        if not query_str or len(query_str.strip()) < 2:
+            return 200, {"users": []}
+
+        results = self.user_repo.search_users(query_str)
+        # Filter out current user and strip sensitive fields
+        sanitized = [
+            {
+                "id": u["id"],
+                "name": u["fullName"],
+                "email": u["email"],
+                "phone": u["phone"],
+                "city": u.get("city"),
+                "profilePhoto": u.get("profilePhoto"),
+            }
+            for u in results
+            if u["id"] != current_user_id
+        ]
+        return 200, {"users": sanitized}
+
+    async def lookup_user(self, identifier: str) -> Tuple[int, Dict[str, Any]]:
+        user = self.user_repo.find_by_id(identifier) or self.user_repo.find_by_email(identifier) or self.user_repo.find_by_phone(identifier)
+        if not user:
+            return 404, {"error": "User not found"}
+        return 200, {
+            "user": {
+                "id": user["id"],
+                "name": user["fullName"],
+                "email": user["email"],
+                "phone": user["phone"],
+                "city": user.get("city"),
+                "profilePhoto": user.get("profilePhoto"),
+            }
+        }
+
+    async def set_pin(self, user_id: str, pin: str) -> Tuple[int, Dict[str, Any]]:
+        clean_pin = str(pin).strip()
+        if not clean_pin or len(clean_pin) != 4 or not clean_pin.isdigit():
+            return 400, {"error": "Payment PIN must be exactly 4 numeric digits."}
+        
+        pin_hash, pin_salt = hash_password(clean_pin)
+        success = self.user_repo.set_pin(user_id, pin_hash, pin_salt)
+        if not success:
+            return 404, {"error": "User account not found."}
+        
+        return 200, {"success": True, "message": "Payment PIN updated securely."}
+
+    async def verify_pin(self, user_id: str, pin: str) -> Tuple[int, Dict[str, Any]]:
+        clean_pin = str(pin).strip()
+        if not clean_pin or len(clean_pin) != 4 or not clean_pin.isdigit():
+            return 400, {"error": "Invalid PIN format. Must be 4 numeric digits."}
+
+        pin_data = self.user_repo.get_pin(user_id)
+        if not pin_data:
+            return 400, {"error": "No security PIN configured for this account. Please set a PIN in Profile settings."}
+
+        pin_hash, pin_salt = pin_data
+        is_valid = verify_password(clean_pin, pin_salt, pin_hash)
+        if not is_valid:
+            return 400, {"error": "Incorrect security PIN. Please try again."}
+
+        return 200, {"success": True, "verified": True}
+
+    async def get_pin_status(self, user_id: str) -> Tuple[int, Dict[str, Any]]:
+        has_pin = self.user_repo.has_pin(user_id)
+        return 200, {"hasPin": has_pin}
 
 user_service = UserService()

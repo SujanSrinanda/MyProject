@@ -31,3 +31,13 @@ async def evaluate_transaction(
     if status_code >= 400:
         raise HTTPException(status_code=status_code, detail=data.get("error", "Evaluation failed"))
     return data
+
+@transaction_router.delete("/{tx_id}")
+async def delete_transaction(
+    tx_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    status_code, data = await transaction_service.delete_transaction(tx_id, current_user["id"])
+    if status_code >= 400:
+        raise HTTPException(status_code=status_code, detail=data.get("error", "Failed to delete transaction"))
+    return data

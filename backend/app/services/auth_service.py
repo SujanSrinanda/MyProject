@@ -227,7 +227,7 @@ class AuthService:
                 "emailVerified": new_user["emailVerified"],
                 "phoneVerified": new_user["phoneVerified"],
                 "onboardingCompleted": new_user["onboardingCompleted"],
-                "balance": float(new_user.get("balance", 45000.0)),
+                "balance": float(new_user.get("balance", 0.0)),
             }
         }
 
@@ -359,7 +359,7 @@ class AuthService:
                 "onboardingCompleted": user["onboardingCompleted"],
                 "city": user.get("city"),
                 "profilePhoto": user.get("profilePhoto"),
-                "balance": float(user.get("balance", 45000.0)),
+                "balance": float(user.get("balance", 0.0)),
             }
         }
 
@@ -383,7 +383,7 @@ class AuthService:
                 "onboardingCompleted": fresh_user["onboardingCompleted"],
                 "city": fresh_user.get("city"),
                 "profilePhoto": fresh_user.get("profilePhoto"),
-                "balance": float(fresh_user.get("balance", 45000.0)),
+                "balance": float(fresh_user.get("balance", 0.0)),
             },
             "financialProfile": fin_profile or None,
             "securityProfile": sec_profile or None,

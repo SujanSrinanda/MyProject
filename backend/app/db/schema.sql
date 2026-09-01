@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS users (
   phone TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   password_salt TEXT NOT NULL,
+  pin_hash TEXT,
+  pin_salt TEXT,
   email_verified INTEGER NOT NULL DEFAULT 0,
   phone_verified INTEGER NOT NULL DEFAULT 0,
   onboarding_completed INTEGER NOT NULL DEFAULT 0,

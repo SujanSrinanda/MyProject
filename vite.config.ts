@@ -11,7 +11,7 @@ function pythonBackendPlugin(): Plugin {
     configureServer() {
       // Auto-start Python FastAPI backend in background on port 8081
       try {
-        backendProc = spawn('python3', ['-m', 'uvicorn', 'backend.main:app', '--port', '8081', '--host', '127.0.0.1'], {
+        backendProc = spawn('python3', ['-m', 'uvicorn', 'backend.main:app', '--port', '8081', '--host', '127.0.0.1', '--reload'], {
           stdio: 'inherit',
           detached: false,
         });

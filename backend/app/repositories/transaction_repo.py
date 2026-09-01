@@ -59,8 +59,8 @@ class TransactionRepository:
 
     def create(self, tx: Dict[str, Any]) -> Dict[str, Any]:
         now = tx.get("timestamp", datetime.utcnow().isoformat())
-        reasons_json = json.dumps(tx["reasons"]) if tx.get("reasons") else None
-        tech_json = json.dumps(tx["technicalDetails"]) if tx.get("technicalDetails") else None
+        reasons_json = json.dumps(tx["reasons"]) if tx.get("reasons") is not None else None
+        tech_json = json.dumps(tx["technicalDetails"]) if tx.get("technicalDetails") is not None else None
 
         db_manager.execute(
             """INSERT INTO transactions (id, user_id, recipient_name, recipient_phone, amount, note, category, type, status, decision, safety_score, risk_level, reasons_json, technical_details_json, is_new_recipient, timestamp)
@@ -74,10 +74,10 @@ class TransactionRepository:
                 tx.get("note"),
                 tx.get("category", "Other"),
                 tx.get("type", "PHONE"),
-                tx.get("status", "COMPLETED"),
-                tx.get("decision", "ALLOW"),
-                int(tx.get("safetyScore", 90)),
-                tx.get("riskLevel", "LOW"),
+                tx["status"],
+                tx["decision"],
+                int(tx["safetyScore"]),
+                tx["riskLevel"],
                 reasons_json,
                 tech_json,
                 1 if tx.get("isNewRecipient") else 0,
@@ -85,5 +85,12 @@ class TransactionRepository:
             )
         )
         return tx
+
+    def delete(self, tx_id: str, user_id: str) -> bool:
+        existing = self.find_by_id_and_user_id(tx_id, user_id)
+        if not existing:
+            return False
+        db_manager.execute("DELETE FROM transactions WHERE id = ? AND user_id = ?;", (tx_id, user_id))
+        return True
 
 transaction_repository = TransactionRepository()

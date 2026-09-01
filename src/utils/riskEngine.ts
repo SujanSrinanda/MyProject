@@ -1,5 +1,11 @@
 import { RiskEvaluationRequest, RiskEvaluationResponse, RiskDecision, RiskLevel, TechnicalRiskDetails, ModelWeights } from '../types';
 
+/**
+ * PROTOTYPE / VISUALIZATION CONTROLS ONLY:
+ * These client-side weights and functions are strictly used for the interactive
+ * Threat Sandbox simulator in the browser UI. Real transactions are evaluated
+ * authoritatively on the FastAPI backend risk engine.
+ */
 export const DEFAULT_MODEL_WEIGHTS: ModelWeights = {
   rfWeight: 0.45,
   isoWeight: 0.35,
@@ -61,18 +67,19 @@ export function calculateLocalRisk(
     };
   }
 
-  // Rule 2: Challenge trigger (Amount between 10,000 and 50,000 or new recipient)
-  if (amount >= 10000 || isNewRecipient) {
+  // Rule 2: High amount trigger (Amount > 3,000)
+  // Payments exceeding ₹3,000 require Face Biometric verification before PIN
+  if (amount > 3000) {
     const decision: RiskDecision = 'CHALLENGE';
-    const riskLevel: RiskLevel = 'MEDIUM';
-    const safetyScore = Math.floor(65 + Math.random() * 10);
+    const riskLevel: RiskLevel = 'HIGH';
+    const safetyScore = Math.floor(68 + Math.random() * 8);
 
     const humanReasons: string[] = [
-      `This payment of ₹${amount.toLocaleString('en-IN')} is slightly higher than your daily average.`,
+      `High-value payment of ₹${amount.toLocaleString('en-IN')} exceeds standard ₹3,000 threshold.`,
+      'Biometric face verification is required before entering your PIN to protect high-value funds.',
       isNewRecipient
-        ? 'You are paying a new recipient for the first time.'
-        : 'The transaction time or location differs slightly from your routine.',
-      'We need a quick security confirmation before processing.',
+        ? 'First-time high amount transfer requires multi-factor step-up authentication.'
+        : 'Enhanced high-value transaction protection active above ₹3,000.',
     ];
 
     const technicalDetails: TechnicalRiskDetails = {
@@ -80,34 +87,33 @@ export function calculateLocalRisk(
       ifScore: 0.51,
       graphRisk: 0.35,
       shapFactors: [
-        { factor: 'Transaction Amount Deviation', impact: '+0.21', weight: 0.21 },
-        { factor: 'New Recipient Flag', impact: '+0.18', weight: 0.18 },
+        { factor: 'High Transaction Amount Magnitude', impact: '+0.32', weight: 0.32 },
+        { factor: 'Multi-Factor Step-Up Policy', impact: '+0.25', weight: 0.25 },
         { factor: 'Device Consistency', impact: '-0.12', weight: -0.12 },
       ],
       riskFusionModel: 'SentinelFin Multi-Factor Risk Fusion',
-      anomaliesDetected: ['Moderate amount variance from 30-day baseline'],
+      anomaliesDetected: ['High amount exceeding standard ₹3,000 limit'],
     };
 
     return {
       decision,
       safetyScore,
       riskLevel,
-      userMessage: 'We need to verify this payment before proceeding.',
+      userMessage: `Because this payment exceeds ₹3,000 (₹${amount.toLocaleString('en-IN')}), face biometric verification is required before entering your PIN.`,
       humanReasons,
       technicalDetails,
     };
   }
 
-  // Rule 3: Allow (Safe transaction)
+  // Rule 3: Allow (Normal everyday transaction <= 3,000 - PIN is sufficient, hide Face ID)
   const decision: RiskDecision = 'ALLOW';
   const riskLevel: RiskLevel = 'LOW';
-  const safetyScore = Math.floor(90 + Math.random() * 9); // 90-98
+  const safetyScore = Math.floor(92 + Math.random() * 6); // 92-97
 
   const humanReasons: string[] = [
-    'Normal payment amount compared with your usual activity.',
-    'Recipient is recognized or verified in your account.',
-    'Transaction made from your trusted device and location.',
-    'No suspicious security signals detected.',
+    `Transaction amount of ₹${amount.toLocaleString('en-IN')} is within low-risk limit (≤ ₹3,000).`,
+    'Standard peer-to-peer mobile phone payment verified.',
+    'Normal transfer: 4-digit security PIN is sufficient to authorize.',
   ];
 
   const technicalDetails: TechnicalRiskDetails = {
@@ -127,7 +133,7 @@ export function calculateLocalRisk(
     decision,
     safetyScore,
     riskLevel,
-    userMessage: 'Looks safe to pay.',
+    userMessage: 'This transaction is within the ₹3,000 daily limit. 4-digit security PIN is sufficient.',
     humanReasons,
     technicalDetails,
   };
